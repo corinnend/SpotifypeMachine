@@ -89,11 +89,12 @@ def run_spm():
         conn.close()
         return data
 
+
     # =================================================================
-    # For collecting songs on hype.com to add to Spotifype Machine
+    # For collecting songs on hypem.com to add
     # =================================================================
     def hypem_tracks():
-
+        
         # -------------------------------------------------------
         # Scrape URLS
         # -------------------------------------------------------
@@ -101,41 +102,48 @@ def run_spm():
                    'https://hypem.com/popular/2', 
                    'https://hypem.com/popular/3']
 
-        hm_data = pd.DataFrame()
-        
-        # Loop through URLs
-        for u in hm_urls:
 
-        # Request page content
-            hm_soup = BeautifulSoup(requests.get(u).content, 'html.parser')    
+        hm_data = pd.DataFrame()
+
+        for u in hm_urls:
+            
+            # Request page content
+            hm_soup = BeautifulSoup(requests.get(u).content, 'html.parser')
 
             # Define lists to append
             titles = []
             artists = []
             track_ids = []
 
-            # Parse titles
-            for t in hm_soup.find_all('span', attrs={'class':'base-title'}):
-                titles.append(t.text)
+            # Loop through HTML
+            for s in hm_soup.find_all('div',attrs={'class':'section-player'}):
 
-            # Parse artists
-            for a in hm_soup.find_all('a', attrs={'class':'artist'}):
-                artists.append(a.text)
-
-            # Parse Spotify IDs
-            for s in hm_soup.find_all('span', attrs={'class':'download'}):
-                i = s.find('a',attrs={'href':re.compile('go/spotify')})
-                if i is not None:
-                    track_ids.append(i['href'].replace('/go/spotify_track/', ''))
-                else:
+                # Parse song titles
+                try:
+                    titles.append(s.find('span', attrs={'class':'base-title'}).text)
+                except:
+                    titles.append(None)     
+                    
+                # Parse artists
+                try:   
+                    artists.append(s.find('a', attrs={'class':'artist'}).text)
+                except:
+                    artists.append(None)  
+                    
+                # Parse Spotify track IDs
+                try: 
+                    track_ids.append(s.find('a',attrs={'href':re.compile('go/spotify')})['href'] \
+                                     .replace('/go/spotify_track/', ''))
+                except:
                     track_ids.append(None)
-
+                    
+            # Compile and remove songs without a Spotify ID     
             hm_out = pd.DataFrame({
-                    'title':titles, 
-                    'artist':artists,
-                    'track_id':track_ids}).dropna().reset_index(drop=True)
+                'title':titles, 
+                'artist':artists,
+                'track_id':track_ids}).dropna().reset_index(drop=True)
 
-            # Store as df and remove songs without a Spotify ID
+            # Append data
             hm_data = pd.concat([hm_data, hm_out], axis=0, ignore_index=True)
 
         # -------------------------------------------------------
@@ -145,7 +153,8 @@ def run_spm():
         hm_data['released'] = None
         hm_data['artist_id'] = None
         hm_data['genres'] = None
-
+    
+        # Loop through hypem tracks
         for s in range(len(hm_data)):
 
             # Assign release date
@@ -161,7 +170,7 @@ def run_spm():
             hm_data['genres'][s] = sp.artist(hm_data['artist_id'][s]) \
                 .get('genres')
             
-        # Convert released date to year 
+        # Convert released date to year
         hm_data['released'] = pd.to_datetime(hm_data['released']).dt.year  
 
 
@@ -188,7 +197,7 @@ def run_spm():
 
             # If release date was within a year 
             # and song has not been posted to the playlist 
-            # and genre is a preferred genre, then add to playlist
+            # and genre is a preferred genre, then add
             if ((hm_data['released'][s] >= 2020) &
                 (hm_data['track_id'][s] not in hist_track_ids) & 
                 (hm_data['preferred_genre'][s] == 'Y')):
@@ -203,15 +212,16 @@ def run_spm():
         return hm_data
 
     # =================================================================
-    # Update Spotify playlist and store new songs locally
+    # Update Spotify playlist and store new songs in a local db
     # =================================================================
     hm_data = hypem_tracks()
     
+    # If no new songs were collected
     if hm_data.empty:
         print('No songs to add.')
 
     else:
-        # Add when song was posted to the playlist 
+        # Add song posted date
         hm_data['posted_on'] = str(datetime.datetime.now().date())
 
         # Convert list of genres to string
@@ -228,5 +238,4 @@ def run_spm():
             position=0)
 
         print(len(hm_data), 'songs added to Spotifype Machine.')
-
-
+        
