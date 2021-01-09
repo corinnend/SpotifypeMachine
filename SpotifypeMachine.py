@@ -3,7 +3,6 @@
 #                                  SPOTIFYPE MACHINE
 # ----------------------------------------------------------------------------------------
 # ----------------------------------------------------------------------------------------
-
 # Load external packages
 import warnings
 warnings.filterwarnings('ignore')
@@ -43,7 +42,7 @@ def run_spm():
     SCOPE = 'playlist-modify-public'
     
     # =================================================================
-    # Authenicate
+    # Authenticate
     # =================================================================
     sp = spotipy.Spotify(
     auth = util.prompt_for_user_token(
@@ -90,9 +89,8 @@ def run_spm():
         conn.close()
         return data
 
-
     # =================================================================
-    # For collecting songs on hype.com to add
+    # For collecting songs on hype.com to add to Spotifype Machine
     # =================================================================
     def hypem_tracks():
 
@@ -104,7 +102,8 @@ def run_spm():
                    'https://hypem.com/popular/3']
 
         hm_data = pd.DataFrame()
-
+        
+        # Loop through URLs
         for u in hm_urls:
 
         # Request page content
@@ -161,7 +160,8 @@ def run_spm():
             # Assign genres
             hm_data['genres'][s] = sp.artist(hm_data['artist_id'][s]) \
                 .get('genres')
-
+            
+        # Convert released date to year 
         hm_data['released'] = pd.to_datetime(hm_data['released']).dt.year  
 
 
@@ -188,7 +188,7 @@ def run_spm():
 
             # If release date was within a year 
             # and song has not been posted to the playlist 
-            # and genre is a preferred genre, then add
+            # and genre is a preferred genre, then add to playlist
             if ((hm_data['released'][s] >= 2020) &
                 (hm_data['track_id'][s] not in hist_track_ids) & 
                 (hm_data['preferred_genre'][s] == 'Y')):
@@ -203,7 +203,7 @@ def run_spm():
         return hm_data
 
     # =================================================================
-    # Update Spotify playlist and store new songs in a local db
+    # Update Spotify playlist and store new songs locally
     # =================================================================
     hm_data = hypem_tracks()
     
@@ -211,7 +211,7 @@ def run_spm():
         print('No songs to add.')
 
     else:
-        # Add song posted date
+        # Add when song was posted to the playlist 
         hm_data['posted_on'] = str(datetime.datetime.now().date())
 
         # Convert list of genres to string
